@@ -1,3 +1,5 @@
+window.__KR_SCRIPT_LOADED__ = true;
+
 let members = [];
 let currentAudio = null;
 let globalLoadTimeout, memberLoadTimeout;
@@ -83,15 +85,20 @@ function initCandyPool() {
 
 function handleInteraction(e) {
     const now = performance.now();
-    if (now - lastPointerTime < 110) return;
-    const x = e.clientX;
-    const y = e.clientY;
+    if (now - lastPointerTime < 115) return;
+    let x = e.clientX;
+    let y = e.clientY;
+    if ((x === undefined || y === undefined) && e.touches && e.touches.length > 0) {
+        x = e.touches[0].clientX;
+        y = e.touches[0].clientY;
+    }
     if (x === undefined || y === undefined) return;
     lastPointerTime = now;
     createCandyBurst(x, y);
 }
 
-document.addEventListener('pointerdown', handleInteraction, { passive: true });
+document.addEventListener('click', handleInteraction);
+document.addEventListener('touchstart', handleInteraction, { passive: true });
 
 function createCandyBurst(x, y) {
     if (candyPool.length === 0) initCandyPool();
@@ -307,27 +314,40 @@ function init3DTilt() {
     });
 }
 
+async function fetchMemberWithTimeout(url, timeoutMs = 5000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        return res;
+    } catch (err) {
+        clearTimeout(timer);
+        return null;
+    }
+}
+
 async function loadDynamicMembers() {
     const fileNames = ['leader'];
     for (let i = 1; i <= 44; i++) {
         fileNames.push(`member${i}`);
     }
 
-    const parser = new DOMParser();
     const fetchPromises = fileNames.map(async (fileName, index) => {
         try {
-            const response = await fetch(`members/${fileName}.html`);
-            if (response.ok) {
+            const response = await fetchMemberWithTimeout(`members/${fileName}.html`, 5000);
+            if (response && response.ok) {
                 const htmlContent = await response.text();
-                const doc = parser.parseFromString(htmlContent.trim(), 'text/html');
-                const card = doc.body.firstElementChild;
-                if (card) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = htmlContent.trim();
+                const card = tempDiv.querySelector('[data-name]') || tempDiv.firstElementChild;
+                if (card && card.dataset && card.dataset.name) {
                     const data = card.dataset;
                     const imgTag = card.querySelector('.avatar-container img');
-                    const rawAvatar = imgTag ? imgTag.getAttribute('src') : '';
+                    const rawAvatar = imgTag ? (imgTag.getAttribute('src') || imgTag.src) : '';
 
                     return {
-                        name: data.name || '',
+                        name: data.name,
                         id: data.id || '',
                         avatar: rawAvatar || '',
                         personalImg: data.pfimg || rawAvatar || '',
@@ -352,18 +372,18 @@ async function loadDynamicMembers() {
 
     if (members.length === 0) {
         const svgAvatar1 = "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 640"><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#04182e"/><stop offset="50%" stop-color="#0a2e52"/><stop offset="100%" stop-color="#020912"/></linearGradient></defs><rect width="360" height="640" fill="url(#g1)"/><circle cx="180" cy="210" r="95" fill="#00e5ff" opacity="0.22"/><text x="180" y="235" font-size="110" text-anchor="middle">⛄</text><text x="180" y="370" font-size="28" font-family="sans-serif" font-weight="bold" fill="#38bdf8" text-anchor="middle">THE BÁO</text><text x="180" y="415" font-size="18" font-family="monospace" fill="#e0f2fe" text-anchor="middle">KingoFaReGion</text></svg>`);
-        const svgAvatar2 = "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 640"><defs><linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#062238"/><stop offset="50%" stop-color="#0d3b5e"/><stop offset="100%" stop-color="#020810"/></linearGradient></defs><rect width="360" height="640" fill="url(#g2)"/><circle cx="180" cy="210" r="95" fill="#10b981" opacity="0.22"/><text x="180" y="235" font-size="110" text-anchor="middle">🎄</text><text x="180" y="370" font-size="28" font-family="sans-serif" font-weight="bold" fill="#4ade80" text-anchor="middle">WARRIOR</text><text x="180" y="415" font-size="18" font-family="monospace" fill="#bae6fd" text-anchor="middle">KingoFaReGion</text></svg>`);
+        const svgAvatar2 = "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 640"><defs><linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#062238"/><stop offset="50%" stop-color="#0d3b5e"/><stop offset="100%" stop-color="#020810"/></linearGradient></defs><rect width="360" height="640" fill="url(#g2)"/><circle cx="180" cy="210" r="95" fill="#10b981" opacity="0.22"/><text x="180" y="235" font-size="110" text-anchor="middle">🎄</text><text x="180" y="370" font-size="28" font-family="sans-serif" font-weight="bold" fill="#4ade80" text-anchor="middle">ʜảɪɢʏm</text><text x="180" y="415" font-size="18" font-family="monospace" fill="#bae6fd" text-anchor="middle">KingoFaReGion</text></svg>`);
         members = [
             {
-                name: "THE BÁO",
+                name: "『KR・xBáo』",
                 id: "51765023672",
                 avatar: svgAvatar1,
                 personalImg: svgAvatar1,
-                zalo: "https://zalo.me/g/eipdae678",
-                desc: "Chủ quân đoàn Gia Đình Nhìu Chiện - KingoFaReGion.",
-                slogan: "Chạy bo mỗi tối, Vui vẻ không quạu, Chiến hết mình cùng anh em",
+                zalo: "https://zaloapp.com/qr/p/xzkrobe1cdfg?src=qr",
+                desc: "Gánh lặng gia đình - Người không có tiếng lói trong gia đình. Hiền như bụi nhưng bụi nào thì...",
+                slogan: "gánh team (hoặc gánh tạ or gánh nặng)!, mưu hèn kế mất zạy, ae toy là chính gọi là có mặt, cái nào ra cái nào, chuyện gì ra chuyện gì đâu ra đâu",
                 guns: "M16A4, AKM, AUG, MG3, FAMAS, GROZA",
-                drive: "https://photos.app.goo.gl/xz763ZtwfMHn6JGt7",
+                drive: "https://drive.google.com/drive/folders/10t7w6ygyRW4UtkkaUuM53Z6vQC319q4X",
                 role: "CHỦ TEAM",
                 hex: colorPalette[0]
             },
@@ -383,10 +403,7 @@ async function loadDynamicMembers() {
         ];
     }
 
-    initCandyPool();
     renderMembers();
-    initWinterSkyEntities();
-    initMasterAmbientLoop();
 }
 
 function startGlobalLoad() {
@@ -395,12 +412,12 @@ function startGlobalLoad() {
     bar.style.transition = 'none';
     bar.style.width = '0%';
     setTimeout(() => {
-        bar.style.transition = 'width 5s linear';
+        bar.style.transition = 'width 2.5s linear';
         bar.style.width = '100%';
-    }, 100);
+    }, 80);
     globalLoadTimeout = setTimeout(() => {
         skipGlobalLoad();
-    }, 5000);
+    }, 2600);
 }
 
 function skipGlobalLoad() {
@@ -414,7 +431,7 @@ function skipGlobalLoad() {
     if (loader) {
         setTimeout(() => {
             loader.classList.add('hidden');
-        }, 300);
+        }, 250);
     }
 }
 
@@ -447,29 +464,34 @@ function startMemberLoad(index) {
 
     const loader = document.getElementById('member-loader');
     const bar = document.getElementById('member-bar');
-    document.getElementById('member-loading-text').innerText = `CONNECTING TO ${member.name.toUpperCase()}...`;
+    const textEl = document.getElementById('member-loading-text');
+    if (textEl) {
+        textEl.innerText = `CONNECTING TO ${(member.name || '').toUpperCase()}...`;
+    }
 
     prepareModalImage(member);
     triggerWinterProfileSwarm();
 
-    loader.classList.remove('hidden');
-    bar.style.transition = 'none';
-    bar.style.width = '0%';
-
-    setTimeout(() => {
-        bar.style.transition = 'width 3s linear';
-        bar.style.width = '100%';
-    }, 100);
+    if (loader) loader.classList.remove('hidden');
+    if (bar) {
+        bar.style.transition = 'none';
+        bar.style.width = '0%';
+        setTimeout(() => {
+            bar.style.transition = 'width 2.2s linear';
+            bar.style.width = '100%';
+        }, 80);
+    }
 
     memberLoadTimeout = setTimeout(() => {
         cancelMemberLoad();
         openProfile(index);
-    }, 3000);
+    }, 2300);
 }
 
 function cancelMemberLoad() {
     clearTimeout(memberLoadTimeout);
-    document.getElementById('member-loader').classList.add('hidden');
+    const loader = document.getElementById('member-loader');
+    if (loader) loader.classList.add('hidden');
 }
 
 function renderMembers() {
@@ -522,7 +544,7 @@ function renderMembers() {
                         <span>${propIcon}</span>
                     </div>
 
-                    <div class="absolute top-0 bottom-0 w-1.5 bg-gradient-to-b from-transparent via-[${member.hex}] to-transparent ${isEven ? 'left-0' : 'right-0'}"></div>
+                    <div class="absolute top-0 bottom-0 w-1.5 ${isEven ? 'left-0' : 'right-0'}" style="background: linear-gradient(to bottom, transparent, ${member.hex}, transparent);"></div>
                     
                     <div class="${textDetail} space-y-2 relative z-20">
                         <h2 class="text-3xl md:text-5xl font-gaming font-bold uppercase tracking-wider transition-all duration-300 transform group-hover:scale-105" 
@@ -550,7 +572,11 @@ function renderMembers() {
     init3DTilt();
 }
 
+let ambientLoopStarted = false;
 function initMasterAmbientLoop() {
+    if (ambientLoopStarted) return;
+    ambientLoopStarted = true;
+
     const canvas = document.getElementById('particle-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -712,7 +738,8 @@ function syncModalOpenState() {
 }
 
 function toggleCultureModal() {
-    document.getElementById('culture-modal').classList.toggle('active');
+    const modal = document.getElementById('culture-modal');
+    if (modal) modal.classList.toggle('active');
     syncModalOpenState();
 }
 
@@ -754,19 +781,21 @@ function openProfile(index) {
 }
 
 function closeProfile() {
-    document.getElementById('profile-modal').classList.remove('active');
+    const modal = document.getElementById('profile-modal');
+    if (modal) modal.classList.remove('active');
     syncModalOpenState();
     if (currentAudio) {
         currentAudio.pause();
         currentAudio = null;
     }
-    document.getElementById('music-player-record').classList.add('hidden');
+    const rec = document.getElementById('music-player-record');
+    if (rec) rec.classList.add('hidden');
 }
 
 function openLightbox(src) {
     const lightbox = document.getElementById('lightbox-modal');
     const lightboxImg = document.getElementById('lightbox-img');
-    if (src) {
+    if (src && lightbox && lightboxImg) {
         lightboxImg.src = src;
         lightbox.classList.add('active');
         syncModalOpenState();
@@ -774,17 +803,40 @@ function openLightbox(src) {
 }
 
 function closeLightbox() {
-    document.getElementById('lightbox-modal').classList.remove('active');
+    const lightbox = document.getElementById('lightbox-modal');
+    if (lightbox) lightbox.classList.remove('active');
     syncModalOpenState();
 }
 
-window.onload = function () {
-    startGlobalLoad();
-    loadDynamicMembers();
-};
+window.skipGlobalLoad = skipGlobalLoad;
+window.cancelMemberLoad = cancelMemberLoad;
+window.toggleCultureModal = toggleCultureModal;
+window.openProfile = openProfile;
+window.closeProfile = closeProfile;
+window.openLightbox = openLightbox;
+window.closeLightbox = closeLightbox;
+window.startMemberLoad = startMemberLoad;
 
-window.onclick = function (event) {
-    if (event.target.classList.contains('modal')) {
+let appStarted = false;
+function initWinterApp() {
+    if (appStarted) return;
+    appStarted = true;
+    startGlobalLoad();
+    initCandyPool();
+    initWinterSkyEntities();
+    initMasterAmbientLoop();
+    loadDynamicMembers();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initWinterApp);
+} else {
+    initWinterApp();
+}
+window.addEventListener('load', initWinterApp);
+
+window.addEventListener('click', function (event) {
+    if (event.target && event.target.classList && event.target.classList.contains('modal')) {
         if (event.target.id === 'lightbox-modal') {
             closeLightbox();
         } else {
@@ -795,8 +847,9 @@ window.onclick = function (event) {
                     currentAudio.pause();
                     currentAudio = null;
                 }
-                document.getElementById('music-player-record').classList.add('hidden');
+                const rec = document.getElementById('music-player-record');
+                if (rec) rec.classList.add('hidden');
             }
         }
     }
-};
+});
